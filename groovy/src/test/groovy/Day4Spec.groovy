@@ -52,11 +52,22 @@ class Day4Spec extends Specification {
         def logsByDay = logs.groupBy { it.timestamp.toLocalDate() }
 
        return logsByDay.collect { day, daysLogs ->
-//           println "$day $daysLogs"
-            def fellAsleep = daysLogs.find { it.message.contains("falls asleep") }.timestamp
-            def wakesUp = daysLogs.find { it.message.contains("wakes up") }.timestamp
-            return fellAsleep.getMinute()..wakesUp.getMinute()
-
+           def minutesAsleep = []
+           def fellAsleep = null
+           def wokeUp = null
+           for (Log log : daysLogs) {
+               if (log.message.contains("falls asleep")) {
+                   fellAsleep = log.timestamp.getMinute()
+               } else if (log.message.contains("wakes up")) {
+                   wokeUp = log.timestamp.getMinute()
+               }
+               if (fellAsleep && wokeUp) {
+                   minutesAsleep.addAll(fellAsleep..wokeUp)
+                   fellAsleep = null
+                   wokeUp = null
+               }
+           }
+           return minutesAsleep
         }
     }
 
@@ -164,16 +175,21 @@ class Day4Spec extends Specification {
         ]
     }
 
+    void "getMinutesAsleep when multiple naps per shift"() {
+        List<String> logLines = """[1518-11-01 23:58] Guard #99 begins shift
+[1518-11-02 00:36] falls asleep
+[1518-11-02 00:46] wakes up
+[1518-11-02 00:50] falls asleep
+[1518-11-02 00:58] wakes up""".split("\n")
+        List<Log> logs = logLines.collect { parseLine(it) }
+        def minutesAsleep = getMinutesAsleep(logs)
+        expect:
+        assert (minutesAsleep[0] as List<Integer>) == [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 50, 51, 52, 53, 54, 55, 56, 57, 58]
+    }
+
     void "test1"() {
         expect:
         List<String> input = this.getClass().getClassLoader().getResource("Day4Test1.txt").readLines()
         process(input) == [10, 24]
-    }
-
-    void "answer"() {
-        expect:
-        List<String> input = this.getClass().getClassLoader().getResource("Day4.txt").readLines()
-     //   661 * 22 == 13220
-        process(input) == [661, 24]
     }
 }
